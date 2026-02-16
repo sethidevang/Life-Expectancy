@@ -1,83 +1,169 @@
 {% extends "base.html" %}
 {% block title %}Predict life expectancy{% endblock %}
 {% block head %}
-  <style>
-    .form-section { margin-bottom: 2rem; }
-    .form-section-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
-    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; }
-    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
-    .result-card { padding: 1.75rem; border-radius: var(--radius); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; background: var(--success-muted); border: 1px solid rgba(18, 183, 106, 0.4); }
-    .result-label { font-size: 1.25rem; font-weight: 700; color: var(--success); }
-    .btn-loading { position: relative; color: transparent !important; }
-    .btn-loading::after { content: ''; position: absolute; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-  </style>
+<style>
+  .form-section {
+    margin-bottom: 2rem;
+  }
+
+  .form-section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+  }
+
+  @media (max-width: 600px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .result-card {
+    padding: 1.75rem;
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    background: var(--success-muted);
+    border: 1px solid rgba(18, 183, 106, 0.4);
+  }
+
+  .result-label {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--success);
+  }
+
+  .btn-loading {
+    position: relative;
+    color: transparent !important;
+  }
+
+  .btn-loading::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>
 {% endblock %}
 {% block content %}
-  {% if not model_loaded %}
-    <div class="alert alert-warning">
-      <span aria-hidden="true">⚠️</span>
-      <div><strong>Model not loaded.</strong> Run <code class="mono">python train_model.py</code> in this folder first.</div>
-    </div>
-  {% else %}
-    <div class="page-header" style="margin-bottom: 1.5rem;">
-      <h1 style="font-size: 1.5rem; font-weight: 700;">Predict life expectancy</h1>
-      <p class="muted" style="margin-top: 0.25rem;">Enter country, year, status, and health/economic indicators to get predicted life expectancy (years)</p>
-    </div>
-    {% if error %}<div class="alert alert-danger"><span aria-hidden="true">✕</span><div>{{ error }}</div></div>{% endif %}
-    {% if result %}
-      <div class="result-card" role="status">
-        <div class="result-label">Predicted life expectancy: {{ result.life_expectancy }} years</div>
-      </div>
-    {% endif %}
+{% if not model_loaded %}
+<div class="alert alert-warning">
+  <span aria-hidden="true">⚠️</span>
+  <div><strong>Model not loaded.</strong> Run <code class="mono">python train_model.py</code> in this folder first.
+  </div>
+</div>
+{% else %}
+<div class="page-header" style="margin-bottom: 1.5rem;">
+  <h1 style="font-size: 1.5rem; font-weight: 700;">Predict life expectancy</h1>
+  <p class="muted" style="margin-top: 0.25rem;">Enter country, year, status, and health/economic indicators to get
+    predicted life expectancy (years)</p>
+</div>
+{% if error %}<div class="alert alert-danger"><span aria-hidden="true">✕</span>
+  <div>{{ error }}</div>
+</div>{% endif %}
+{% if result %}
+<div class="result-card" role="status">
+  <div class="result-label">Predicted life expectancy: {{ result.life_expectancy }} years</div>
+</div>
+{% endif %}
 
-    <div class="card">
-      <form method="post" action="{{ url_for('predict') }}" id="predictForm">
-        <div class="form-section">
-          <div class="form-section-title">Country & status</div>
-          <div class="form-grid">
-            <div class="form-group"><label>Country</label><input type="text" name="Country" value="{{ request.form.get('Country', '') }}" placeholder="Afghanistan"></div>
-            <div class="form-group"><label>Year</label><input type="number" name="Year" value="{{ request.form.get('Year', '') }}" placeholder="2015" min="2000" max="2025"></div>
-            <div class="form-group"><label>Status</label><select name="Status"><option value="Developing" {{ 'selected' if request.form.get('Status') == 'Developing' else '' }}>Developing</option><option value="Developed" {{ 'selected' if request.form.get('Status') == 'Developed' else '' }}>Developed</option></select></div>
-          </div>
-        </div>
-        <div class="form-section">
-          <div class="form-section-title">Mortality & health</div>
-          <div class="form-grid">
-            <div class="form-group"><label>Adult Mortality</label><input type="number" name="Adult Mortality" value="{{ request.form.get('Adult Mortality', '') }}" placeholder="200" min="1" step="0.1"></div>
-            <div class="form-group"><label>infant deaths</label><input type="number" name="infant deaths" value="{{ request.form.get('infant deaths', '') }}" placeholder="50" min="0" step="0.1"></div>
-            <div class="form-group"><label>under-five deaths</label><input type="number" name="under-five deaths" value="{{ request.form.get('under-five deaths', '') }}" placeholder="60" min="0" step="0.1"></div>
-            <div class="form-group"><label>Alcohol</label><input type="number" name="Alcohol" value="{{ request.form.get('Alcohol', '') }}" placeholder="2" min="0" step="0.01"></div>
-            <div class="form-group"><label>BMI</label><input type="number" name="BMI" value="{{ request.form.get('BMI', '') }}" placeholder="20" min="10" max="50" step="0.1"></div>
-            <div class="form-group"><label>Hepatitis B</label><input type="number" name="Hepatitis B" value="{{ request.form.get('Hepatitis B', '') }}" placeholder="80" min="0" max="100" step="0.1"></div>
-            <div class="form-group"><label>Measles</label><input type="number" name="Measles" value="{{ request.form.get('Measles', '') }}" placeholder="100" min="0" step="0.1"></div>
-            <div class="form-group"><label>Polio</label><input type="number" name="Polio" value="{{ request.form.get('Polio', '') }}" placeholder="80" min="0" max="100" step="0.1"></div>
-            <div class="form-group"><label>Diphtheria</label><input type="number" name="Diphtheria" value="{{ request.form.get('Diphtheria', '') }}" placeholder="80" min="0" max="100" step="0.1"></div>
-            <div class="form-group"><label>HIV/AIDS</label><input type="number" name="HIV/AIDS" value="{{ request.form.get('HIV/AIDS', '') }}" placeholder="0.1" min="0" step="0.01"></div>
-            <div class="form-group"><label>thinness 1-19 years</label><input type="number" name="thinness  1-19 years" value="{{ request.form.get('thinness  1-19 years', '') }}" placeholder="5" min="0" step="0.1"></div>
-            <div class="form-group"><label>thinness 5-9 years</label><input type="number" name="thinness 5-9 years" value="{{ request.form.get('thinness 5-9 years', '') }}" placeholder="5" min="0" step="0.1"></div>
-          </div>
-        </div>
-        <div class="form-section">
-          <div class="form-section-title">Economy & education</div>
-          <div class="form-grid">
-            <div class="form-group"><label>percentage expenditure</label><input type="number" name="percentage expenditure" value="{{ request.form.get('percentage expenditure', '') }}" placeholder="500" min="0" step="0.1"></div>
-            <div class="form-group"><label>Total expenditure</label><input type="number" name="Total expenditure" value="{{ request.form.get('Total expenditure', '') }}" placeholder="6" min="0" step="0.01"></div>
-            <div class="form-group"><label>GDP</label><input type="number" name="GDP" value="{{ request.form.get('GDP', '') }}" placeholder="2000" min="0" step="0.1"></div>
-            <div class="form-group"><label>Population</label><input type="number" name="Population" value="{{ request.form.get('Population', '') }}" placeholder="1000000" min="0" step="1"></div>
-            <div class="form-group"><label>Income composition of resources</label><input type="number" name="Income composition of resources" value="{{ request.form.get('Income composition of resources', '') }}" placeholder="0.5" min="0" max="1" step="0.01"></div>
-            <div class="form-group"><label>Schooling</label><input type="number" name="Schooling" value="{{ request.form.get('Schooling', '') }}" placeholder="10" min="0" max="25" step="0.1"></div>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary" id="submitBtn">Predict</button>
-      </form>
+<div class="card">
+  <form method="post" action="{{ url_for('predict') }}" id="predictForm">
+    <div class="form-section">
+      <div class="form-section-title">Country & status</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Country</label><input type="text" name="Country"
+            value="{{ request.form.get('Country', '') }}" placeholder="e.g. Afghanistan"></div>
+        <div class="form-group"><label>Year</label><input type="number" name="Year"
+            value="{{ request.form.get('Year', '') }}" placeholder="e.g. 2015" min="2000" max="2025"></div>
+        <div class="form-group"><label>Status</label><select name="Status">
+            <option value="Developing" {{ 'selected' if request.form.get('Status')=='Developing' else '' }}>Developing
+            </option>
+            <option value="Developed" {{ 'selected' if request.form.get('Status')=='Developed' else '' }}>Developed
+            </option>
+          </select></div>
+      </div>
     </div>
-    <script>
-      document.getElementById('predictForm').addEventListener('submit', function() {
-        var btn = document.getElementById('submitBtn');
-        btn.disabled = true;
-        btn.classList.add('btn-loading');
-      });
-    </script>
-  {% endif %}
+    <div class="form-section">
+      <div class="form-section-title">Mortality & health</div>
+      <div class="form-grid">
+        <div class="form-group"><label>Adult Mortality</label><input type="number" name="Adult Mortality"
+            value="{{ request.form.get('Adult Mortality', '') }}" placeholder="e.g. 200" min="1" step="0.1"></div>
+        <div class="form-group"><label>infant deaths</label><input type="number" name="infant deaths"
+            value="{{ request.form.get('infant deaths', '') }}" placeholder="e.g. 50" min="0" step="0.1"></div>
+        <div class="form-group"><label>under-five deaths</label><input type="number" name="under-five deaths"
+            value="{{ request.form.get('under-five deaths', '') }}" placeholder="e.g. 60" min="0" step="0.1"></div>
+        <div class="form-group"><label>Alcohol</label><input type="number" name="Alcohol"
+            value="{{ request.form.get('Alcohol', '') }}" placeholder="e.g. 2" min="0" step="0.01"></div>
+        <div class="form-group"><label>BMI</label><input type="number" name="BMI"
+            value="{{ request.form.get('BMI', '') }}" placeholder="e.g. 20" min="10" max="50" step="0.1"></div>
+        <div class="form-group"><label>Hepatitis B</label><input type="number" name="Hepatitis B"
+            value="{{ request.form.get('Hepatitis B', '') }}" placeholder="e.g. 80" min="0" max="100" step="0.1"></div>
+        <div class="form-group"><label>Measles</label><input type="number" name="Measles"
+            value="{{ request.form.get('Measles', '') }}" placeholder="e.g. 100" min="0" step="0.1"></div>
+        <div class="form-group"><label>Polio</label><input type="number" name="Polio"
+            value="{{ request.form.get('Polio', '') }}" placeholder="e.g. 80" min="0" max="100" step="0.1"></div>
+        <div class="form-group"><label>Diphtheria</label><input type="number" name="Diphtheria"
+            value="{{ request.form.get('Diphtheria', '') }}" placeholder="e.g. 80" min="0" max="100" step="0.1"></div>
+        <div class="form-group"><label>HIV/AIDS</label><input type="number" name="HIV/AIDS"
+            value="{{ request.form.get('HIV/AIDS', '') }}" placeholder="e.g. 0.1" min="0" step="0.01"></div>
+        <div class="form-group"><label>thinness 1-19 years</label><input type="number" name="thinness  1-19 years"
+            value="{{ request.form.get('thinness  1-19 years', '') }}" placeholder="e.g. 5" min="0" step="0.1"></div>
+        <div class="form-group"><label>thinness 5-9 years</label><input type="number" name="thinness 5-9 years"
+            value="{{ request.form.get('thinness 5-9 years', '') }}" placeholder="e.g. 5" min="0" step="0.1"></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">Economy & education</div>
+      <div class="form-grid">
+        <div class="form-group"><label>percentage expenditure</label><input type="number" name="percentage expenditure"
+            value="{{ request.form.get('percentage expenditure', '') }}" placeholder="e.g. 500" min="0" step="0.1">
+        </div>
+        <div class="form-group"><label>Total expenditure</label><input type="number" name="Total expenditure"
+            value="{{ request.form.get('Total expenditure', '') }}" placeholder="e.g. 6" min="0" step="0.01"></div>
+        <div class="form-group"><label>GDP</label><input type="number" name="GDP"
+            value="{{ request.form.get('GDP', '') }}" placeholder="e.g. 2000" min="0" step="0.1"></div>
+        <div class="form-group"><label>Population</label><input type="number" name="Population"
+            value="{{ request.form.get('Population', '') }}" placeholder="e.g. 1000000" min="0" step="1"></div>
+        <div class="form-group"><label>Income composition of resources</label><input type="number"
+            name="Income composition of resources" value="{{ request.form.get('Income composition of resources', '') }}"
+            placeholder="e.g. 0.5" min="0" max="1" step="0.01"></div>
+        <div class="form-group"><label>Schooling</label><input type="number" name="Schooling"
+            value="{{ request.form.get('Schooling', '') }}" placeholder="e.g. 10" min="0" max="25" step="0.1"></div>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary" id="submitBtn">Predict</button>
+  </form>
+</div>
+<script>
+  document.getElementById('predictForm').addEventListener('submit', function () {
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.classList.add('btn-loading');
+  });
+</script>
+{% endif %}
 {% endblock %}
