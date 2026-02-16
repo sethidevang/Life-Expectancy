@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr !important; } .kpi-grid { grid-template-columns: 1fr 1fr !important; } }
+  </style>
+{% endblock %}
+{% block content %}
+  {% if not model_loaded %}
+    <div class="alert alert-warning">
+      <span aria-hidden="true">⚠️</span>
+      <div>
+        <strong>Model not loaded.</strong> Put <code class="mono">data.csv</code> in this folder, run <code class="mono">python train_model.py</code>, then restart the app.
+      </div>
+    </div>
+  {% else %}
+    <div class="card description-panel" style="margin-bottom: 2rem; padding: 1.5rem 1.75rem;">
+      <div class="card-title" style="margin-bottom: 0.75rem;">About this project</div>
+      <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.65; margin-bottom: 1rem;">
+        <strong style="color: var(--text);">Life Expectancy Predictor</strong> uses the WHO Life Expectancy dataset to predict <strong style="color: var(--success);">life expectancy (years)</strong> from country, year, status, and health/economic indicators (mortality, alcohol, BMI, vaccinations, GDP, schooling, etc.). The model uses a Linear Regression pipeline with StandardScaler and OneHotEncoder.
+      </p>
+      <div class="card-title" style="font-size: 0.8rem; margin-bottom: 0.5rem;">How it works</div>
+      <ol style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7; margin: 0 0 1rem 1.25rem; padding: 0;">
+        <li><strong style="color: var(--text);">Target</strong> — Life expectancy (continuous, in years).</li>
+        <li><strong style="color: var(--text);">Features</strong> — Country, Year, Status, Adult Mortality, infant deaths, Alcohol, percentage expenditure, Hepatitis B, Measles, BMI, under-five deaths, Polio, Total expenditure, Diphtheria, HIV/AIDS, GDP, Population, thinness 1–19 / 5–9 years, Income composition, Schooling.</li>
+        <li><strong style="color: var(--text);">Model</strong> — Preprocessor (StandardScaler + OneHotEncoder) + Linear Regression, trained on 80% of the data.</li>
+        <li><strong style="color: var(--text);">Predict</strong> — Enter values in <a href="{{ url_for('predict') }}" style="color: var(--accent);">Predict</a> to get predicted life expectancy in years.</li>
+      </ol>
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
+        The <strong style="color: var(--text);">Dashboard</strong> below summarizes the dataset. Use <strong style="color: var(--text);">Predict</strong> to score a profile.
+      </p>
+    </div>
+
+    {% if stats %}
+      <div class="page-header" style="margin-bottom: 1.75rem;">
+        <h1 style="font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em;">Overview</h1>
+        <p class="muted" style="margin-top: 0.25rem;">Life expectancy dataset metrics</p>
+      </div>
+      <div class="kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        <div class="card" style="border-left: 3px solid var(--accent);">
+          <div class="card-title">Total rows</div>
+          <div style="font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums;">{{ "{:,}".format(stats.total_rows) }}</div>
+        </div>
+        <div class="card" style="border-left: 3px solid var(--success);">
+          <div class="card-title">Mean life expectancy</div>
+          <div style="font-size: 1.75rem; font-weight: 700; color: var(--success); font-variant-numeric: tabular-nums;">{{ stats.mean_life_expectancy }} years</div>
+        </div>
+      </div>
+      {% if stats.status_labels and stats.status_means %}
+      <div class="card" style="padding: 1.5rem;">
+        <div class="card-title">Mean life expectancy by Status</div>
+        <div style="height: 220px;">
+          <canvas id="chartStatus" aria-label="Life expectancy by status"></canvas>
+        </div>
+      </div>
+      <script>
+        (function() {
+          const labels = {{ stats.status_labels | tojson }};
+          const means = {{ stats.status_means | tojson }};
+          const colors = ['#4f7cf6', '#12b76a', '#f79009'];
+          if (labels.length && document.getElementById('chartStatus')) {
+            new Chart(document.getElementById('chartStatus'), {
+              type: 'bar',
+              data: { labels: labels, datasets: [{ label: 'Mean life expectancy (years)', data: means, backgroundColor: colors.slice(0, labels.length), borderRadius: 6 }] },
+              options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9ca3b4' } }, x: { grid: { display: false }, ticks: { color: '#9ca3b4' } } } }
+            });
+          }
+        })();
+      </script>
+      {% endif %}
+    {% else %}
+      <p class="muted">No <code class="mono">data.csv</code> in this folder.</p>
+    {% endif %}
+    <div style="margin-top: 1.5rem;">
+      <a href="{{ url_for('predict') }}" class="btn btn-primary">
+        Predict life expectancy
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+  {% endif %}
+{% endblock %}
